@@ -68,6 +68,14 @@ const TransactionList: React.FC = () => {
       toast.error('Error updating status: ' + error.message);
     }
   };
+  const handleStatusChange = (newStatus) => {
+    if (newStatus !== selectedStatus) {
+      setSelectedStatus(newStatus);
+    } else {
+      fetchTransactions(); // Force fetch if status is the same
+    }
+  };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -77,7 +85,7 @@ const TransactionList: React.FC = () => {
         <select
           id="status-filter"
           value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           {statuses.map((status) => (

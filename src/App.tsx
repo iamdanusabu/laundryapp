@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,17 +7,21 @@ import NewTransaction from './pages/NewTransaction';
 import TransactionList from './pages/TransactionList';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicStatusCheck from './pages/PublicStatusCheck';
 
 function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route path="/" element={<AuthPage />} />
+          <Route path="/login" element={<AuthPage/>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/new-transaction" element={<ProtectedRoute><NewTransaction /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><TransactionList /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/status" element={<PublicStatusCheck />} />
+          {/* Redirect to login on root path */}
+          <Route path="/" element={<AuthPage />} />
         </Routes>
         <ToastContainer position="bottom-right" />
       </div>

@@ -38,9 +38,10 @@ const Settings: React.FC = () => {
   const addStatus = async () => {
     if (!newStatus.trim()) return;
     try {
+      const newId = statuses.length > 0 ? Math.max(...statuses.map(s => s.id)) + 1 : 1; // Generate a new ID
       const { error } = await supabase
         .from('statuses')
-        .insert({ name: newStatus, order: statuses.length });
+        .insert({ id: newId, name: newStatus, order: statuses.length });
 
       if (error) throw error;
       setNewStatus('');

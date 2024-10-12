@@ -1,25 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { supabase } from '../supabase';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, Search, UserPlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 type FormData = {
   customerPhone: string;
   customerName: string;
   items: {
     name: string;
+    procedure: string;
     quantity: number;
     price: number;
     tags: string[];
   }[];
 };
 
+type Customer = {
+  phone: string;
+  name: string;
+  address: string;
+  tag: string;
+};
+
 const NewTransaction: React.FC = () => {
   const { register, control, handleSubmit, setValue, watch } = useForm<FormData>({
     defaultValues: {
-      items: [{ name: '', quantity: 1, price: 0, tags: [] }],
+      items: [{ name: '', procedure: '', quantity: 1, price: 0, tags: [] }],
     },
   });
   const { fields, append, remove } = useFieldArray({
@@ -28,7 +40,11 @@ const NewTransaction: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [customerExists, setCustomerExists] = useState(false);
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const navigate = useNavigate();
+
+  const watchItems = watch('items');
+  const total = watchItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
@@ -52,6 +68,7 @@ const NewTransaction: React.FC = () => {
           customer_phone: data.customerPhone,
           items: data.items,
           status: 'In Queue',
+          total_amount: total,
         });
 
       if (transactionError) throw transactionError;
@@ -75,9 +92,31 @@ const NewTransaction: React.FC = () => {
     if (error) {
       setCustomerExists(false);
       setValue('customerName', '');
+      if (confirm('Customer not found. Would you like to add a new customer?')) {
+        setShowNewCustomerModal(true);
+      }
     } else {
       setCustomerExists(true);
       setValue('customerName', data.name);
+    }
+  };
+
+  const handleAddNewCustomer = async (customerData: Customer) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([customerData])
+        .select();
+      
+      if (error) throw error;
+
+      setCustomerExists(true);
+      setValue('customerPhone', customerData.phone);
+      setValue('customerName', customerData.name);
+      setShowNewCustomerModal(false);
+      toast.success('New customer added successfully!');
+    } catch (error) {
+      toast.error('Error adding new customer: ' + error.message);
     }
   };
 
@@ -85,26 +124,26 @@ const NewTransaction: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-8">
       <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">New Transaction</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="customerPhone">
-            Customer Phone
-          </label>
-          <input
+        <div className="mb-4 flex items-center">
+          <Input
             {...register('customerPhone')}
-            onBlur={(e) => checkCustomer(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="customerPhone"
+            className="flex-grow mr-2"
+            placeholder="Search customer by phone"
             type="tel"
-            placeholder="Customer Phone"
           />
+          <Button type="button" onClick={() => checkCustomer(watch('customerPhone'))}>
+            <Search className="w-4 h-4 mr-2" />
+            Search
+          </Button>
+          <Button type="button" onClick={() => setShowNewCustomerModal(true)} className="ml-2">
+            <UserPlus className="w-4 h-4 mr-2" />
+            New Customer
+          </Button>
         </div>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="customerName">
-            Customer Name
-          </label>
-          <input
+          <Label htmlFor="customerName">Customer Name</Label>
+          <Input
             {...register('customerName')}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             id="customerName"
             type="text"
             placeholder="Customer Name"
@@ -115,62 +154,60 @@ const NewTransaction: React.FC = () => {
           <h2 className="text-xl font-semibold mb-2">Items</h2>
           {fields.map((field, index) => (
             <div key={field.id} className="flex flex-wrap -mx-3 mb-4">
-              <div className="w-full md:w-1/3 px-3 mb-4 md:mb-0">
-                <input
+              <div className="w-full md:w-1/4 px-3 mb-4 md:mb-0">
+                <Input
                   {...register(`items.${index}.name` as const)}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   placeholder="Item name"
                 />
               </div>
+              <div className="w-full md:w-1/4 px-3 mb-4 md:mb-0">
+                <Input
+                  {...register(`items.${index}.procedure` as const)}
+                  placeholder="Procedure"
+                />
+              </div>
               <div className="w-full md:w-1/6 px-3 mb-4 md:mb-0">
-                <input
+                <Input
                   {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   type="number"
                   placeholder="Qty"
                 />
               </div>
               <div className="w-full md:w-1/6 px-3 mb-4 md:mb-0">
-                <input
+                <Input
                   {...register(`items.${index}.price` as const, { valueAsNumber: true })}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   type="number"
                   step="0.01"
                   placeholder="Price"
                 />
               </div>
-              <div className="w-full md:w-1/3 px-3 mb-4 md:mb-0">
-                <input
-                  {...register(`items.${index}.tags` as const)}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  placeholder="Tags (comma-separated)"
+              <div className="w-full md:w-1/6 px-3 mb-4 md:mb-0">
+                <Input
+                  value={(watchItems[index].quantity * watchItems[index].price).toFixed(2)}
+                  readOnly
+                  placeholder="Total"
                 />
               </div>
               <div className="w-full md:w-1/12 px-3 flex items-center">
-                <button
-                  type="button"
-                  onClick={() => remove(index)}
-                  className="text-red-500 hover:text-red-700"
-                >
+                <Button type="button" onClick={() => remove(index)} variant="destructive">
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
             </div>
           ))}
-          <button
+          <Button
             type="button"
-            onClick={() => append({ name: '', quantity: 1, price: 0, tags: [] })}
-            className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center"
+            onClick={() => append({ name: '', procedure: '', quantity: 1, price: 0, tags: [] })}
+            className="mb-4"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Item
-          </button>
+          </Button>
+        </div>
+        <div className="mb-4">
+          <strong>Total Amount: ₹{total.toFixed(2)}</strong>
         </div>
         <div className="flex items-center justify-between">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center"
-          >
+          <Button type="submit" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
@@ -179,10 +216,67 @@ const NewTransaction: React.FC = () => {
             ) : (
               'Create Transaction'
             )}
-          </button>
+          </Button>
         </div>
       </form>
+
+      <NewCustomerModal
+        isOpen={showNewCustomerModal}
+        onClose={() => setShowNewCustomerModal(false)}
+        onSubmit={handleAddNewCustomer}
+      />
     </div>
+  );
+};
+
+interface NewCustomerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: Customer) => void;
+}
+
+const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onClose, onSubmit }) => {
+  const { register, handleSubmit } = useForm<Customer>();
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Customer</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input id="name" {...register('name', { required: true })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input id="phone" {...register('phone', { required: true })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Address
+              </Label>
+              <Input id="address" {...register('address')} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tag" className="text-right">
+                Tag
+              </Label>
+              <Input id="tag" {...register('tag')} className="col-span-3" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit">Add Customer</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
