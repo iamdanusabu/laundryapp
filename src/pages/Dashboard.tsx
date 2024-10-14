@@ -197,8 +197,8 @@ export default function Dashboard() {
                 <Link to="/customers" className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                   Customers
                 </Link>
-                <Link to="/reports" className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                  Reports
+                <Link to="/new-transaction" className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                  New Transaction
                 </Link>
               </nav>
             </div>
